@@ -1,0 +1,41 @@
+Référence : Mission FRAUD-X42-2026-05 | DataShield Analytics
+
+
+PISTE A — Profil Horaire
+------------------------
+Clé du Map        : hour(timestamp)
+Valeur émise      : count de transactions par heure
+Opération Reduce  : groupBy(hour).count() → calcul du z-score par heure
+Sortie attendue   : Liste des heures avec z-score > 2 (volume anormalement élevé)
+
+
+PISTE B — Comportement Client (Burst)
+--------------------------------------
+Clé du Map        : user_id + fenêtre temporelle glissante
+Valeur émise      : nombre de transactions dans les 2h / montant cumulé en 24h
+Opération Reduce  : Window.partitionBy(user_id).orderBy(timestamp) → filtre temporel
+Sortie attendue   : Users avec > 5 transactions en 2h OU cumul > 1 500 € en 24h
+
+
+PISTE C — Géographie Suspecte
+------------------------------
+Clé du Map        : (billing_country, delivery_country, payment_method)
+Valeur émise      : flag si billing_country != delivery_country ET payment_method IN ['carte_prepayee', 'crypto']
+Opération Reduce  : filter multi-conditions → groupBy(country) → count
+Sortie attendue   : Transactions géo-suspectes, croisées avec liste de pays à risque (RO, UA, MD, BY, XK)
+
+
+PISTE D — Nouveaux Comptes
+---------------------------
+Clé du Map        : booléen account_age_days < 7 (nouveau / ancien)
+Valeur émise      : amount_eur par groupe
+Opération Reduce  : mean, stddev, median calculés séparément pour chaque groupe
+Sortie attendue   : Comparaison statistique distribution montants nouveaux comptes vs anciens comptes
+
+
+PISTE E — Score de Risque Composite
+-------------------------------------
+Clé du Map        : transaction_id
+Valeur émise      : signaux binaires/numériques issus des pistes A, B, C, D
+Opération Reduce  : somme pondérée → score normalisé 0–100
+Sortie attendue   : Top 50 transactions classées par score de risque décroissant
